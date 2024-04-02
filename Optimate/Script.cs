@@ -30,7 +30,8 @@ namespace VMS.TPS
 
         private void InitializeAndStartMainWindow(EsapiWorker esapiWorker)
         {
-            var model = new MainModel(esapiWorker);
+            var modImp = new MainModel_Default(esapiWorker);
+            var model = new MainModel(modImp);
             var viewModel = new ViewModel(model);
             var mainWindow = new ScriptWindow(viewModel);
             mainWindow.ShowDialog();
@@ -47,7 +48,8 @@ namespace VMS.TPS
             // to the Script class itself.
             Helpers.SeriLog.Initialize(context.CurrentUser.Id);
             // The ESAPI worker needs to be created in the main thread
-            var esapiWorker = new EsapiWorker(context.Patient, context.StructureSet);
+            var esapiWorker_def = new EsapiWorker_Default(context.Patient, context.StructureSet);
+            var esapiWorker = new EsapiWorker(esapiWorker_def);
 
             // This new queue of tasks will prevent the script
             // for exiting until the new window is closed

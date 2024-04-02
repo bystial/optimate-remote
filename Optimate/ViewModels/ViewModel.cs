@@ -214,9 +214,13 @@ namespace Optimate.ViewModels
             _model = model;
             _model.SetEventAggregator(_ea);
             RegisterEvents();
-            _model.Initialize();
+            InitializeModel = _model.InitializeAsync();
+            
         }
-
+        public Task InitializeModel
+        {
+            get;
+        }
         private void RegisterEvents()
         {
             _ea.GetEvent<StructureGeneratedEvent>().Subscribe(UpdateStatus_GeneratedStructure);

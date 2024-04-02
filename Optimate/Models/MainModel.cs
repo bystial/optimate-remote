@@ -15,7 +15,6 @@ using VMS.TPS.Common.Model.API;
 
 namespace OptiMate.Models
 {
-
     public struct StructureGeneratedEventInfo
     {
         public GeneratedStructure Structure;
@@ -49,7 +48,6 @@ namespace OptiMate.Models
     {
         public GeneratedStructure NewStructure;
     }
-
     public class RemovedInstructionEvent : PubSubEvent<InstructionRemovedEventInfo> { }
     public class ModelInitializedEvent : PubSubEvent { }
     public class AddedInstructionEvent : PubSubEvent<InstructionAddedEventInfo> { }
@@ -58,26 +56,169 @@ namespace OptiMate.Models
     public class RemovedTemplateStructureEvent : PubSubEvent<RemovedTemplateStructureEventInfo> { }
     public class RemovedGeneratedStructureEvent : PubSubEvent<RemovedGeneratedStructureEventInfo> { }
     public class NewGeneratedStructureEvent : PubSubEvent<NewGeneratedStructureEventInfo> { }
-    public class MainModel
+    public interface IMainModel
     {
-        private EsapiWorker _ew = null;
-        private IEventAggregator _ea = null;
-        private OptiMateTemplate _template = null;
-
-        private List<string> _availableStructureIds = new List<string>();
-        public string StructureSetId { get; private set; }
-        public MainModel(EsapiWorker ew)
+        string StructureSetId { get; }
+        //void Initialize(); //to be changed..
+        Task InitializeAsync();
+        List<string> GetEclipseStructureIds(string thisGenStructureId = "");
+        List<string> GetGeneratedStructureIds();
+        List<string> GetAvailableTemplateTargetIds(string thisGenStructureId = "");
+        Task<(bool, List<string>)> GenerateStructures();
+        List<TemplateStructure> GetAugmentedTemplateStructures(string structureId);
+        List<string> GetTemplateStructureIds();
+        void SetEventAggregator(IEventAggregator ea);
+        OptiMateTemplate LoadTemplate(TemplatePointer value);
+        string GetNewTemplateStructureId();
+        string GetNewGenStructureId();
+        TemplateStructure AddTemplateStructure();
+        void RemoveTemplateStructure(string templateStructureId);
+        void RemoveInstruction(string structureId, Instruction instruction);
+        int GetInstructionNumber(string structureId, Instruction instruction);
+        Instruction AddInstruction(GeneratedStructure generatedStructure, OperatorTypes selectedOperator, int index);
+        Instruction ReplaceInstruction(GeneratedStructure parentGeneratedStructure, Instruction instruction, OperatorTypes selectedOperator);
+        Instruction CreateInstruction(OperatorTypes selectedOperator);
+        bool IsEmpty(string eclipseStructureId);
+        GeneratedStructure AddGeneratedStructure();
+        void RemoveGeneratedStructure(string structureId);
+        bool IsGeneratedStructureIdValid(string value);
+        bool IsTemplateStructureIdValid(string value);
+    }
+    public sealed class MainModel
+    {
+        private readonly IMainModel model;
+        private readonly string structureSetId;
+        public string StructureSetId
         {
-            _ew = ew;
+            get { return structureSetId; }
         }
-
-        public async void Initialize()
+        public MainModel(IMainModel model)
         {
-            bool Done = await Task.Run(() => _ew.AsyncRunStructureContext((p, ss, ui) =>
+            this.model = model;
+        }
+        //public void Initialize()
+        //{
+        //    model.Initialize();
+        //}
+        public Task InitializeAsync()
+        {
+            return model.InitializeAsync();
+        }
+        public List<string> GetEclipseStructureIds(string thisGenStructureId = "")
+        {
+            return model.GetEclipseStructureIds(thisGenStructureId);
+        }
+        public List<string> GetGeneratedStructureIds()
+        {
+            return model.GetGeneratedStructureIds();
+        }
+        public List<string> GetAvailableTemplateTargetIds(string thisGenStructureId = "")
+        {
+            return model.GetAvailableTemplateTargetIds(thisGenStructureId);
+        }
+        public Task<(bool, List<string>)> GenerateStructures()
+        {
+            return model.GenerateStructures();
+        }
+        public List<TemplateStructure> GetAugmentedTemplateStructures(string structureId)
+        {
+            return model.GetAugmentedTemplateStructures(structureId);
+        }
+        public List<string> GetTemplateStructureIds()
+        {
+            return model.GetTemplateStructureIds();
+        }
+        public void SetEventAggregator(IEventAggregator ea)
+        {
+            model.SetEventAggregator(ea);
+        }
+        public OptiMateTemplate LoadTemplate(TemplatePointer value)
+        {
+            return model.LoadTemplate(value);
+        }
+        public string GetNewTemplateStructureId()
+        {
+            return model.GetNewTemplateStructureId();
+        }
+        public string GetNewGenStructureId()
+        {
+            return model.GetNewGenStructureId();
+        }
+        public TemplateStructure AddTemplateStructure()
+        {
+            return model.AddTemplateStructure();
+        }
+        public void RemoveTemplateStructure(string templateStructureId)
+        {
+            model.RemoveTemplateStructure(templateStructureId);
+        }
+        public void RemoveInstruction(string structureId, Instruction instruction)
+        {
+            model.RemoveInstruction(structureId, instruction);
+        }
+        public int GetInstructionNumber(string structureId, Instruction instruction)
+        {
+            return model.GetInstructionNumber(structureId, instruction);
+        }
+        public Instruction AddInstruction(GeneratedStructure generatedStructure, OperatorTypes selectedOperator, int index)
+        {
+            return model.AddInstruction(generatedStructure, selectedOperator, index);
+        }
+        public Instruction ReplaceInstruction(GeneratedStructure parentGeneratedStructure, Instruction instruction, OperatorTypes selectedOperator)
+        {
+            return model.ReplaceInstruction(parentGeneratedStructure, instruction, selectedOperator);
+        }
+        public Instruction CreateInstruction(OperatorTypes selectedOperator)
+        {
+            return model.CreateInstruction(selectedOperator);
+        }
+        public bool IsEmpty(string eclipseStructureId)
+        {
+            return model.IsEmpty(eclipseStructureId);
+        }
+        public GeneratedStructure AddGeneratedStructure()
+        {
+            return model.AddGeneratedStructure();
+        }
+        public void RemoveGeneratedStructure(string structureId)
+        {
+            model.RemoveGeneratedStructure(structureId);
+        }
+        public bool IsGeneratedStructureIdValid(string value)
+        {
+            return model.IsGeneratedStructureIdValid(value);
+        }
+        public bool IsTemplateStructureIdValid(string value)
+        {
+            return model.IsTemplateStructureIdValid(value);
+        }
+    }
+    public class MainModel_Default : IMainModel
+    {
+        private readonly EsapiWorker ew = null;
+        private IEventAggregator ea = null;
+        private OptiMateTemplate template = null;
+
+        private List<string> availableStructureIds = new List<string>();
+        private string ssID; 
+        public string StructureSetId { get { return ssID; } }
+        public MainModel_Default(EsapiWorker ew)
+        {
+            this.ew = ew;
+        }
+        private MainModel_Default() { }
+        /*
+         * change Initialization method to not be void, that way exception handling will work 
+         * https://blog.stephencleary.com/2013/01/async-oop-2-constructors.html
+         * -HL
+        */
+        public async Task InitializeAsync()
+        {
+            bool done = await Task.Run(() => ew.AsyncRunStructureContext((p, ss, ui) =>
             {
                 p.BeginModifications();
-                _availableStructureIds = ss.Structures.Select(x => x.Id).ToList();
-                StructureSetId = ss.Id;
+                availableStructureIds = ss.Structures.Select(x => x.Id).ToList();
+                ssID = ss.Id;
                 // one time initialization
                 isStructureEmpty = new Dictionary<string, bool>();
                 foreach (var s in ss.Structures)
@@ -85,38 +226,35 @@ namespace OptiMate.Models
                     isStructureEmpty.Add(s.Id, s.IsEmpty);
                 }
             }));
-            _ea.GetEvent<ModelInitializedEvent>().Publish();
+            ea.GetEvent<ModelInitializedEvent>().Publish();
         }
-
         public List<string> GetEclipseStructureIds(string thisGenStructureId = "")
         {
-            return new List<string>(_availableStructureIds);
-
+            return new List<string>(availableStructureIds);
         }
-
 
         public List<string> GetGeneratedStructureIds()
         {
-            return new List<string>(_template.GeneratedStructures.Select(x => x.StructureId));
+            return new List<string>(template.GeneratedStructures.Select(x => x.StructureId));
         }
         public List<string> GetAvailableTemplateTargetIds(string thisGenStructureId = "")
         {
-            var availableStructures = _template.TemplateStructures.Select(x => x.TemplateStructureId).ToList();
-            availableStructures.AddRange(_template.GeneratedStructures.Take(_template.GeneratedStructures.Select(x => x.StructureId).ToList().IndexOf(thisGenStructureId)).Select(x => x.StructureId));
+            var availableStructures = template.TemplateStructures.Select(x => x.TemplateStructureId).ToList();
+            availableStructures.AddRange(template.GeneratedStructures.Take(template.GeneratedStructures.Select(x => x.StructureId).ToList().IndexOf(thisGenStructureId)).Select(x => x.StructureId));
             return availableStructures;
         }
 
-        internal async Task<(bool, List<string>)> GenerateStructures()
+        public async Task<(bool, List<string>)> GenerateStructures()
         {
             int index = 0;
             List<string> completionWarnings = new List<string>();
-            foreach (var genStructure in _template.GeneratedStructures)
+            foreach (var genStructure in template.GeneratedStructures)
             {
                 List<TemplateStructure> augmentedList = GetAugmentedTemplateStructures(genStructure.StructureId);
-                var structureModel = new GenerateStructureModel(_ew, _ea, genStructure, augmentedList);
+                var structureModel = new GenerateStructureModel(ew, ea, genStructure, augmentedList);
                 await structureModel.GenerateStructure();
                 completionWarnings.AddRange(structureModel.GetCompletionWarnings());
-                _ea.GetEvent<StructureGeneratedEvent>().Publish(new StructureGeneratedEventInfo { Structure = genStructure, IndexInQueue = index++, TotalToGenerate = _template.GeneratedStructures.Count() });
+                ea.GetEvent<StructureGeneratedEvent>().Publish(new StructureGeneratedEventInfo { Structure = genStructure, IndexInQueue = index++, TotalToGenerate = template.GeneratedStructures.Count() });
             }
             if (completionWarnings.Count > 0)
             {
@@ -128,10 +266,10 @@ namespace OptiMate.Models
             }
         }
 
-        private List<TemplateStructure> GetAugmentedTemplateStructures(string structureId)
+        public List<TemplateStructure> GetAugmentedTemplateStructures(string structureId)
         {
-            var augmentedList = _template.TemplateStructures.ToList();
-            foreach (var genStructure in _template.GeneratedStructures.Take(_template.GeneratedStructures.Select(x => x.StructureId).ToList().IndexOf(structureId)))
+            var augmentedList = template.TemplateStructures.ToList();
+            foreach (var genStructure in template.GeneratedStructures.Take(template.GeneratedStructures.Select(x => x.StructureId).ToList().IndexOf(structureId)))
             {
                 augmentedList.Add(new TemplateStructure() { TemplateStructureId = genStructure.StructureId, EclipseStructureId = genStructure.StructureId});
             }
@@ -140,14 +278,14 @@ namespace OptiMate.Models
 
         public List<string> GetTemplateStructureIds()
         {
-            return new List<string>(_template.TemplateStructures.Select(x => x.TemplateStructureId));
+            return new List<string>(template.TemplateStructures.Select(x => x.TemplateStructureId));
         }
-        internal void SetEventAggregator(IEventAggregator ea)
+        public void SetEventAggregator(IEventAggregator ea)
         {
-            _ea = ea;
+            this.ea = ea;
         }
 
-        internal OptiMateTemplate LoadTemplate(TemplatePointer value)
+        public OptiMateTemplate LoadTemplate(TemplatePointer value)
         {
             XmlSerializer Ser = new XmlSerializer(typeof(OptiMateTemplate));
             if (value != null)
@@ -156,7 +294,7 @@ namespace OptiMate.Models
                 {
                     using (StreamReader templateData = new StreamReader(value.TemplatePath))
                     {
-                        _template = (OptiMateTemplate)Ser.Deserialize(templateData);
+                        template = (OptiMateTemplate)Ser.Deserialize(templateData);
                     }
                 }
                 catch (Exception ex)
@@ -168,18 +306,18 @@ namespace OptiMate.Models
             }
             else
             {
-                _template = null;
+                template = null;
             }
-            if (_template != null)
+            if (template != null)
             {
                 Helpers.SeriLog.AddLog($"Protocol [{value.TemplateDisplayName}] selected");
-                return _template;
+                return template;
             }
             else return null;
 
         }
 
-        private string getNewTemplateStructureId()
+        public string GetNewTemplateStructureId()
         {
             int count = 1;
             string baseId = "NewTS";
@@ -189,7 +327,7 @@ namespace OptiMate.Models
             }
             return baseId + count;
         }
-        private string getNewGenStructureId()
+        public string GetNewGenStructureId()
         {
             int count = 1;
             string baseId = "NewGS";
@@ -199,45 +337,45 @@ namespace OptiMate.Models
             }
             return baseId + count;
         }
-        internal TemplateStructure AddTemplateStructure()
+        public TemplateStructure AddTemplateStructure()
         {
             var newTemplateStructure = new TemplateStructure()
             {
-                TemplateStructureId = getNewTemplateStructureId()
+                TemplateStructureId = GetNewTemplateStructureId()
             };
-            var templateList = _template.TemplateStructures.ToList();
+            var templateList = template.TemplateStructures.ToList();
             templateList.Add(newTemplateStructure);
-            _template.TemplateStructures = templateList.ToArray();
-            _ea.GetEvent<NewTemplateStructureEvent>().Publish(new NewTemplateStructureEventInfo { Structure = newTemplateStructure });
+            template.TemplateStructures = templateList.ToArray();
+            ea.GetEvent<NewTemplateStructureEvent>().Publish(new NewTemplateStructureEventInfo { Structure = newTemplateStructure });
             return newTemplateStructure;
         }
 
-        internal void RemoveTemplateStructure(string templateStructureId)
+        public void RemoveTemplateStructure(string templateStructureId)
         {
-            var templateStructures = _template.TemplateStructures.ToList();
+            var templateStructures = template.TemplateStructures.ToList();
             var removedStructure = templateStructures.FirstOrDefault(x => x.TemplateStructureId == templateStructureId);
             templateStructures.Remove(removedStructure);
-            _template.TemplateStructures = templateStructures.ToArray();
-            _ea.GetEvent<RemovedTemplateStructureEvent>().Publish(new RemovedTemplateStructureEventInfo { RemovedStructure = removedStructure });
+            template.TemplateStructures = templateStructures.ToArray();
+            ea.GetEvent<RemovedTemplateStructureEvent>().Publish(new RemovedTemplateStructureEventInfo { RemovedStructure = removedStructure });
         }
 
-        internal void RemoveInstruction(string structureId, Instruction instruction)
+        public void RemoveInstruction(string structureId, Instruction instruction)
         {
-            var genStructure = _template.GeneratedStructures.FirstOrDefault(x => x.StructureId == structureId);
+            var genStructure = template.GeneratedStructures.FirstOrDefault(x => x.StructureId == structureId);
             var instructionItems = genStructure.Instructions.Items.ToList();
             instructionItems.Remove(instruction);
-            _template.GeneratedStructures.FirstOrDefault(x => x.StructureId == structureId).Instructions.Items = instructionItems.ToArray();
-            _ea.GetEvent<RemovedInstructionEvent>().Publish(new InstructionRemovedEventInfo { Structure = genStructure, RemovedInstruction = instruction });
+            template.GeneratedStructures.FirstOrDefault(x => x.StructureId == structureId).Instructions.Items = instructionItems.ToArray();
+            ea.GetEvent<RemovedInstructionEvent>().Publish(new InstructionRemovedEventInfo { Structure = genStructure, RemovedInstruction = instruction });
         }
 
-        internal int GetInstructionNumber(string structureId, Instruction instruction)
+        public int GetInstructionNumber(string structureId, Instruction instruction)
         {
-            var genStructure = _template.GeneratedStructures.FirstOrDefault(x => x.StructureId == structureId);
+            var genStructure = template.GeneratedStructures.FirstOrDefault(x => x.StructureId == structureId);
             var temp = genStructure.Instructions.Items.ToList().IndexOf(instruction);
             return temp;
         }
 
-        internal Instruction AddInstruction(GeneratedStructure generatedStructure, OperatorTypes selectedOperator, int index)
+        public Instruction AddInstruction(GeneratedStructure generatedStructure, OperatorTypes selectedOperator, int index)
         {
             var newInstruction = CreateInstruction(selectedOperator);
             var instructionItems = generatedStructure.Instructions.Items.ToList();
@@ -246,9 +384,9 @@ namespace OptiMate.Models
             return newInstruction;
         }
 
-        internal Instruction ReplaceInstruction(GeneratedStructure parentGeneratedStructure, Instruction instruction, OperatorTypes selectedOperator)
+        public Instruction ReplaceInstruction(GeneratedStructure parentGeneratedStructure, Instruction instruction, OperatorTypes selectedOperator)
         {
-            var genStructure = _template.GeneratedStructures.FirstOrDefault(x => x.StructureId == parentGeneratedStructure.StructureId);
+            var genStructure = template.GeneratedStructures.FirstOrDefault(x => x.StructureId == parentGeneratedStructure.StructureId);
             var instructionItems = genStructure.Instructions.Items.ToList();
             var index = instructionItems.IndexOf(instruction);
             instructionItems.Remove(instruction);
@@ -258,7 +396,7 @@ namespace OptiMate.Models
             return newInstruction;
         }
 
-        private Instruction CreateInstruction(OperatorTypes selectedOperator)
+        public Instruction CreateInstruction(OperatorTypes selectedOperator)
         {
 
             switch (selectedOperator)
@@ -283,7 +421,7 @@ namespace OptiMate.Models
         }
 
         private Dictionary<string, bool> isStructureEmpty = null;
-        internal bool IsEmpty(string eclipseStructureId)
+        public bool IsEmpty(string eclipseStructureId)
         {
 
             if (isStructureEmpty.ContainsKey(eclipseStructureId))
@@ -296,34 +434,34 @@ namespace OptiMate.Models
             }
         }
 
-        internal GeneratedStructure AddGeneratedStructure()
+        public GeneratedStructure AddGeneratedStructure()
         {
             var newGeneratedStructure = new GeneratedStructure()
             {
-                StructureId = getNewGenStructureId(),
+                StructureId = GetNewGenStructureId(),
                 Instructions = new GeneratedStructureInstructions() { Items = new Instruction[] {new Copy() } }
             };
-            var genStructures = _template.GeneratedStructures.ToList();
+            var genStructures = template.GeneratedStructures.ToList();
             genStructures.Add(newGeneratedStructure);
-            _template.GeneratedStructures = genStructures.ToArray();
-            _ea.GetEvent<NewGeneratedStructureEvent>().Publish(new NewGeneratedStructureEventInfo { NewStructure = newGeneratedStructure });
+            template.GeneratedStructures = genStructures.ToArray();
+            ea.GetEvent<NewGeneratedStructureEvent>().Publish(new NewGeneratedStructureEventInfo { NewStructure = newGeneratedStructure });
             return newGeneratedStructure;
         }
 
-        internal void RemoveGeneratedStructure(string structureId)
+        public void RemoveGeneratedStructure(string structureId)
         {
-            var genStructures = _template.GeneratedStructures.ToList();
+            var genStructures = template.GeneratedStructures.ToList();
             genStructures.Remove(genStructures.FirstOrDefault(x => x.StructureId == structureId));
-            _template.GeneratedStructures = genStructures.ToArray();
-            _ea.GetEvent<RemovedGeneratedStructureEvent>().Publish(new RemovedGeneratedStructureEventInfo { RemovedStructureId = structureId });
+            template.GeneratedStructures = genStructures.ToArray();
+            ea.GetEvent<RemovedGeneratedStructureEvent>().Publish(new RemovedGeneratedStructureEventInfo { RemovedStructureId = structureId });
         }
 
-        internal bool IsGeneratedStructureIdValid(string value)
+        public bool IsGeneratedStructureIdValid(string value)
         {
             if (value.Length <=16 
                 && value.Length>0 
-                && !_template.GeneratedStructures.Select(x=>x.StructureId).Contains(value, StringComparer.OrdinalIgnoreCase)
-                && !_template.TemplateStructures.Select(x=>x.TemplateStructureId).Contains(value, StringComparer.OrdinalIgnoreCase))
+                && !template.GeneratedStructures.Select(x=>x.StructureId).Contains(value, StringComparer.OrdinalIgnoreCase)
+                && !template.TemplateStructures.Select(x=>x.TemplateStructureId).Contains(value, StringComparer.OrdinalIgnoreCase))
             {
                 return true;
             }
@@ -333,12 +471,12 @@ namespace OptiMate.Models
             }
         }
 
-        internal bool IsTemplateStructureIdValid(string value)
+        public bool IsTemplateStructureIdValid(string value)
         {
             if (value.Length <= 16
                 && value.Length > 0
-                && !_template.GeneratedStructures.Select(x => x.StructureId).Contains(value, StringComparer.OrdinalIgnoreCase)
-                && !_template.TemplateStructures.Select(x => x.TemplateStructureId).Contains(value, StringComparer.OrdinalIgnoreCase))
+                && !template.GeneratedStructures.Select(x => x.StructureId).Contains(value, StringComparer.OrdinalIgnoreCase)
+                && !template.TemplateStructures.Select(x => x.TemplateStructureId).Contains(value, StringComparer.OrdinalIgnoreCase))
             {
                 return true;
             }

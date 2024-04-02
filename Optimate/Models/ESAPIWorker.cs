@@ -11,24 +11,54 @@ using VMS.TPS.Common.Model.Types;
 
 namespace Optimate
 {
-    public class EsapiWorker 
+    public interface IEspaiWorker
     {
-        private readonly StructureSet _ss = null;
-        private readonly Patient _p = null;
-        private readonly Dispatcher _dispatcher = null;
-        
-        public EsapiWorker(Patient p, StructureSet ss)
+        StructureSet SS { get; }
+        Patient P { get; }
+        Dispatcher Dispatcher { get; }
+        Task<bool> AsyncRunStructureContext(Action<Patient, StructureSet, Dispatcher> a);
+    }
+    public class EsapiWorker
+    {
+        private readonly IEspaiWorker worker;
+        public EsapiWorker(IEspaiWorker worker)
         {
-            _p = p;
-            _ss = ss;
-            _dispatcher = Dispatcher.CurrentDispatcher;
+            this.worker = worker;
+        } 
+        public async Task<bool> AsyncRunStructureContext(Action<Patient, StructureSet, Dispatcher> a)
+        {
+            return await worker.AsyncRunStructureContext(a);
+        }
+    }
+    public class EsapiWorker_Default : IEspaiWorker
+    {
+        private readonly StructureSet ss = null;
+        private readonly Patient p = null;
+        private readonly Dispatcher dispatcher = null;
+        public StructureSet SS
+        {
+            get { return ss; }
+        }
+        public Patient P
+        {
+            get { return p; }
+        }
+        public Dispatcher Dispatcher
+        {
+            get { return dispatcher; }
+        }
+        public EsapiWorker_Default(Patient p, StructureSet ss)
+        {
+            this.p = p;
+            this.ss = ss;
+            dispatcher = Dispatcher.CurrentDispatcher;
         }
     
         public delegate void D(Patient p, StructureSet s);
         public async Task<bool> AsyncRunStructureContext(Action<Patient, StructureSet, Dispatcher> a)
         {
-            await _dispatcher.BeginInvoke(a, _p, _ss, _dispatcher);
+            await dispatcher.BeginInvoke(a, p, ss, dispatcher);
             return true;
         }
-   }
+    }
 }

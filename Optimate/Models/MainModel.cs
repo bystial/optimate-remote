@@ -208,7 +208,7 @@ namespace OptiMate.Models
         }
         private MainModel_Default() { }
         /*
-         * change Initialization method to not be void, that way exception handling will work 
+         * Can assign this task to a property to avoid some potential problems
          * https://blog.stephencleary.com/2013/01/async-oop-2-constructors.html
          * -HL
         */
@@ -251,7 +251,8 @@ namespace OptiMate.Models
             foreach (var genStructure in template.GeneratedStructures)
             {
                 List<TemplateStructure> augmentedList = GetAugmentedTemplateStructures(genStructure.StructureId);
-                var structureModel = new GenerateStructureModel(ew, ea, genStructure, augmentedList);
+                var structureModel_Imp = new GenerateStructureModel_Default(ew, ea, genStructure, augmentedList);
+                var structureModel = new GenerateStructureModel(structureModel_Imp);
                 await structureModel.GenerateStructure();
                 completionWarnings.AddRange(structureModel.GetCompletionWarnings());
                 ea.GetEvent<StructureGeneratedEvent>().Publish(new StructureGeneratedEventInfo { Structure = genStructure, IndexInQueue = index++, TotalToGenerate = template.GeneratedStructures.Count() });

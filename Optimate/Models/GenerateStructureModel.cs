@@ -11,27 +11,103 @@ using VMS.TPS.Common.Model.API;
 
 namespace OptiMate.Models
 {
+    public interface IGenerateStructureModel
+    {
+        Structure GetTargetStructure(StructureSet S, TemplateStructure Target);
+        Task ApplyInstruction(Copy copyInstruction);
+        Task ApplyInstruction(Margin marginInstruction);
+        Task ApplyInstruction(AsymmetricMargin marginInstruction);
+        Task ApplyInstruction(Crop cropInstruction);
+        void CheckForHRConversion(TemplateStructure templateTarget, Structure eclipseTarget);
+        Task ApplyInstruction(And andInstruction);
+        Task ApplyInstruction(Sub subInstruction);
+        Task ApplyInstruction(SubFrom subFromInstruction);
+        Task ApplyInstruction(Or orInstruction);
+        Task GenerateStructure();
+        Task ConvertToHighResolution();
+        IEnumerable<string> GetCompletionWarnings();
 
-    public class GenerateStructureModel
+    }
+    public sealed class GenerateStructureModel
+    {
+        private readonly IGenerateStructureModel model;
+        public GenerateStructureModel(IGenerateStructureModel model)
+        {
+            this.model = model;
+        }
+        public Structure GetTargetStructure(StructureSet S, TemplateStructure Target)
+        {
+            return model.GetTargetStructure(S, Target);
+        }
+        public Task ApplyInstruction(Copy copyInstruction)
+        {
+            return model.ApplyInstruction(copyInstruction);
+        }
+        public Task ApplyInstruction(Margin marginInstruction)
+        {
+            return model.ApplyInstruction(marginInstruction);
+        }
+        public Task ApplyInstruction(AsymmetricMargin marginInstruction)
+        {
+            return model.ApplyInstruction(marginInstruction);
+        }
+        public Task ApplyInstruction(Crop cropInstruction)
+        {
+            return model.ApplyInstruction(cropInstruction);
+        }
+        public void CheckForHRConversion(TemplateStructure templateTarget, Structure eclipseTarget)
+        {
+            model.CheckForHRConversion(templateTarget, eclipseTarget);
+        }
+        public Task ApplyInstruction(And andInstruction)
+        {
+            return model.ApplyInstruction(andInstruction);
+        }
+        public Task ApplyInstruction(Sub subInstruction)
+        {
+            return model.ApplyInstruction(subInstruction);
+        }
+        public Task ApplyInstruction(SubFrom subFromInstruction)
+        {
+            return model.ApplyInstruction(subFromInstruction);
+        }
+        public Task ApplyInstruction(Or orInstruction)
+        {
+            return model.ApplyInstruction(orInstruction);
+        }
+        public Task GenerateStructure()
+        {
+            return model.GenerateStructure();
+        }
+        public Task ConvertToHighResolution()
+        {
+            return model.ConvertToHighResolution();
+        }
+        public IEnumerable<string> GetCompletionWarnings()
+        {
+            return model.GetCompletionWarnings();
+        }
+    }
+    public class GenerateStructureModel_Default : IGenerateStructureModel
     {
 
-        private EsapiWorker ew;
-        public IEventAggregator _ea;
-        private GeneratedStructure genStructure;
-        private List<TemplateStructure> templateStructures;
+        private readonly EsapiWorker ew;
+        public IEventAggregator ea;
+        private readonly GeneratedStructure genStructure;
+        private readonly List<TemplateStructure> templateStructures;
         private Structure generatedEclipseStructure;
-        private List<string> _warnings = new List<string>();
-        private string TempStructureName = @"TEMP_OptiMate";
+        private readonly List<string> warnings = new List<string>();
+        private readonly string tempStructureName = @"TEMP_OptiMate";
 
-        public GenerateStructureModel(EsapiWorker ew, IEventAggregator ea, GeneratedStructure genStructure, List<TemplateStructure> templateStructures)
+        public GenerateStructureModel_Default(EsapiWorker ew, IEventAggregator ea, GeneratedStructure genStructure, List<TemplateStructure> templateStructures)
         {
             this.ew = ew;
-            this._ea = ea;
+            this.ea = ea;
             this.genStructure = genStructure;
             this.templateStructures = templateStructures;
         }
 
-        private Structure GetTargetStructure(StructureSet S, TemplateStructure Target)
+        public Structure GetTargetStructure(StructureSet S, TemplateStructure Target)
         {
             // returns temporary structure with the same resolution and segment volume as the target so it can be modified without changing the target
             string TargetId = Target.EclipseStructureId;
@@ -41,16 +117,16 @@ namespace OptiMate.Models
             if (TargetStructure == null)
             {
                 string warning = string.Format("Opti structure ({0}) creation operation instruction references target {1} which was not found", genStructure.StructureId, TargetId);
-                _warnings.Add(warning);
+                warnings.Add(warning);
                 Helpers.SeriLog.AddLog(warning);
                 return null;
             }
             else
             {
-                Structure Temp = S.Structures.FirstOrDefault(x => x.Id.ToUpper() == TempStructureName.ToUpper());
+                Structure Temp = S.Structures.FirstOrDefault(x => x.Id.ToUpper() == tempStructureName.ToUpper());
                 if (Temp != null)
                     S.RemoveStructure(Temp);
-                Temp = S.AddStructure("CONTROL", TempStructureName);
+                Temp = S.AddStructure("CONTROL", tempStructureName);
                 if (TargetStructure.IsHighResolution)
                 {
                     Temp.ConvertToHighResolution();
@@ -64,7 +140,7 @@ namespace OptiMate.Models
             }
         }
 
-        private async Task ApplyInstruction(Copy copyInstruction)
+        public async Task ApplyInstruction(Copy copyInstruction)
         {
             bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
             {
@@ -74,7 +150,7 @@ namespace OptiMate.Models
                     if (string.IsNullOrEmpty(StructureToCopyId))
                     {
                         string warningMessage = string.Format($"Copy target for structure {genStructure.StructureId} is null, skipping structure...");
-                        _warnings.Add(warningMessage);
+                        warnings.Add(warningMessage);
                         Helpers.SeriLog.AddLog(warningMessage);
                         throw new Exception();
                     }
@@ -82,14 +158,14 @@ namespace OptiMate.Models
                     if (BaseStructure == null)
                     {
                         string warningMessage = string.Format($"Attempt to create structure {genStructure.StructureId} failed as copy target {StructureToCopyId} does not exist in structure set, skipping structure...");
-                        _warnings.Add(warningMessage);
+                        warnings.Add(warningMessage);
                         Helpers.SeriLog.AddLog(warningMessage);
                         throw new Exception();
                     }
                     else if (BaseStructure.IsEmpty)
                     {
                         string warningMessage = string.Format($"Attempt to create structure {genStructure.StructureId} failed as copy target {StructureToCopyId} is empty, skipping structure...");
-                        _warnings.Add(warningMessage);
+                        warnings.Add(warningMessage);
                         Helpers.SeriLog.AddLog(warningMessage);
                         throw new Exception();
                     }
@@ -114,10 +190,10 @@ namespace OptiMate.Models
                         }
                         else if (!BaseStructure.IsHighResolution && generatedEclipseStructure.IsHighResolution)
                         {
-                            var HRTemp = S.Structures.FirstOrDefault(x => x.Id == TempStructureName);
+                            var HRTemp = S.Structures.FirstOrDefault(x => x.Id == tempStructureName);
                             if (HRTemp != null)
                                 S.RemoveStructure(HRTemp);
-                            HRTemp = S.AddStructure(genStructure.DicomType, TempStructureName);
+                            HRTemp = S.AddStructure(genStructure.DicomType, tempStructureName);
                             HRTemp.SegmentVolume = BaseStructure.SegmentVolume;
                             HRTemp.ConvertToHighResolution();
                             generatedEclipseStructure.SegmentVolume = HRTemp.SegmentVolume;
@@ -136,7 +212,7 @@ namespace OptiMate.Models
             }));
         }
 
-        private async Task ApplyInstruction(Margin marginInstruction)
+        public async Task ApplyInstruction(Margin marginInstruction)
         {
             bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
             {
@@ -155,7 +231,7 @@ namespace OptiMate.Models
             }));
         }
 
-        private async Task ApplyInstruction(AsymmetricMargin marginInstruction)
+        public async Task ApplyInstruction(AsymmetricMargin marginInstruction)
         {
             bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
             {
@@ -171,7 +247,7 @@ namespace OptiMate.Models
                     {
                         string warning = "Right margin for " + genStructure.StructureId + " is invalid, using default (0) margin...";
                         Helpers.SeriLog.AddWarning(warning);
-                        _warnings.Add(warning);
+                        warnings.Add(warning);
                     }
                 }
                 if (!string.IsNullOrEmpty(marginInstruction.LeftMargin))
@@ -180,7 +256,7 @@ namespace OptiMate.Models
                     {
                         string warning = "Left margin for " + genStructure.StructureId + " is invalid, using default (0) margin...";
                         Helpers.SeriLog.AddWarning(warning);
-                        _warnings.Add(warning);
+                        warnings.Add(warning);
                     }
                 }
                 if (!string.IsNullOrEmpty(marginInstruction.AntMargin))
@@ -189,7 +265,7 @@ namespace OptiMate.Models
                     {
                         string warning = "Anterior margin for " + genStructure.StructureId + " is invalid, using default (0) margin...";
                         Helpers.SeriLog.AddWarning(warning);
-                        _warnings.Add(warning);
+                        warnings.Add(warning);
                     }
                 }
                 if (!string.IsNullOrEmpty(marginInstruction.PostMargin))
@@ -198,7 +274,7 @@ namespace OptiMate.Models
                     {
                         string warning = "Posterior margin for " + genStructure.StructureId + " is invalid, using default (0) margin...";
                         Helpers.SeriLog.AddWarning(warning);
-                        _warnings.Add(warning);
+                        warnings.Add(warning);
                     }
                 }
                 if (!string.IsNullOrEmpty(marginInstruction.InfMargin))
@@ -207,7 +283,7 @@ namespace OptiMate.Models
                     {
                         string warning = "Inferior margin for " + genStructure.StructureId + " is invalid, using default (0) margin...";
                         Helpers.SeriLog.AddWarning(warning);
-                        _warnings.Add(warning);
+                        warnings.Add(warning);
                     }
                 }
                 if (!string.IsNullOrEmpty(marginInstruction.SupMargin))
@@ -216,14 +292,14 @@ namespace OptiMate.Models
                     {
                         string warning = "Superior margin for " + genStructure.StructureId + " is invalid, using default (0) margin...";
                         Helpers.SeriLog.AddWarning(warning);
-                        _warnings.Add(warning);
+                        warnings.Add(warning);
                     }
                 }
                 var AAM = Helpers.OrientationInvariantMargins.getAxisAlignedMargins(S.Image.ImagingOrientation, rightmargin, antmargin, infmargin, leftmargin, postmargin, supmargin);
                 generatedEclipseStructure.SegmentVolume = generatedEclipseStructure.SegmentVolume.AsymmetricMargin(AAM);
             }));
         }
-        private async Task ApplyInstruction(Crop cropInstruction)
+        public async Task ApplyInstruction(Crop cropInstruction)
         {
             bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
             {
@@ -233,13 +309,13 @@ namespace OptiMate.Models
                 if (TargetStructure == null)
                 {
                     var warning = $"Target of CROP operation [{cropInstruction.TemplateStructureId}] for structure {genStructure.StructureId} is null/empty, skipping instruction...";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                     return;
                 }
                 else if (EclipseTarget.IsEmpty)
                 {
                     var warning = $"Target of CROP operation [{cropInstruction.TemplateStructureId}] for structure {genStructure.StructureId} is empty, skipping instruction...";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                     return;
                 }
                 //Determine crop offset parameters
@@ -273,7 +349,7 @@ namespace OptiMate.Models
                         else
                         {
                             var warning = $"Isotropic crop margin for {genStructure.StructureId} exceeds Eclipse limits, aborting...";
-                            _warnings.Add(warning);
+                            warnings.Add(warning);
                         }
                         return;
                     }
@@ -288,7 +364,7 @@ namespace OptiMate.Models
                         if (!double.TryParse(cropInstruction.RightOffset, out rightOffset))
                         {
                             var warning = $"Right crop margin for {genStructure.StructureId} is invalid, using default (0) offset...";
-                            _warnings.Add(warning);
+                            warnings.Add(warning);
                         }
                     }
                     if (!string.IsNullOrEmpty(cropInstruction.LeftOffset))
@@ -296,7 +372,7 @@ namespace OptiMate.Models
                         if (!double.TryParse(cropInstruction.LeftOffset, out leftOffset))
                         {
                             var warning = $"Left crop margin for {genStructure.StructureId} is invalid, using default (0) offset...";
-                            _warnings.Add(warning);
+                            warnings.Add(warning);
                         }
                     }
                     if (!string.IsNullOrEmpty(cropInstruction.AntOffset))
@@ -304,7 +380,7 @@ namespace OptiMate.Models
                         if (!double.TryParse(cropInstruction.AntOffset, out antOffset))
                         {
                             var warning = $"Anterior crop margin for {genStructure.StructureId} is invalid, using default (0) offset...";
-                            _warnings.Add(warning);
+                            warnings.Add(warning);
                         }
                     }
                     if (!string.IsNullOrEmpty(cropInstruction.PostOffset))
@@ -312,7 +388,7 @@ namespace OptiMate.Models
                         if (!double.TryParse(cropInstruction.PostOffset, out postOffset))
                         {
                             var warning = $"Posterior crop margin for {genStructure.StructureId} is invalid, using default (0) offset...";
-                            _warnings.Add(warning);
+                            warnings.Add(warning);
                         }
                     }
                     if (!string.IsNullOrEmpty(cropInstruction.InfOffset))
@@ -320,7 +396,7 @@ namespace OptiMate.Models
                         if (!double.TryParse(cropInstruction.InfOffset, out infOffset))
                         {
                             var warning = $"Inferior crop margin for {genStructure.StructureId} is invalid, using default (0) offset...";
-                            _warnings.Add(warning);
+                            warnings.Add(warning);
                         }
                     }
                     if (!string.IsNullOrEmpty(cropInstruction.SupOffset))
@@ -328,7 +404,7 @@ namespace OptiMate.Models
                         if (!double.TryParse(cropInstruction.SupOffset, out supOffset))
                         {
                             var warning = $"Superior crop margin for {genStructure.StructureId} is invalid, using default (0) offset...";
-                            _warnings.Add(warning);
+                            warnings.Add(warning);
                         }
                     }
                     var AAM = Helpers.OrientationInvariantMargins.getAxisAlignedMargins(S.Image.ImagingOrientation, rightOffset, antOffset, infOffset, leftOffset, postOffset, supOffset);
@@ -347,7 +423,7 @@ namespace OptiMate.Models
             }));
         }
 
-        private void CheckForHRConversion(TemplateStructure templateTarget, Structure eclipseTarget)
+        public void CheckForHRConversion(TemplateStructure templateTarget, Structure eclipseTarget)
         {
             if (eclipseTarget.IsHighResolution && !generatedEclipseStructure.IsHighResolution)
             {
@@ -355,13 +431,13 @@ namespace OptiMate.Models
                 {
                     // log if this structure wasn't designated as needing to be high resolution
                     var warning = $"Generated structure {genStructure.StructureId} is not templated as high-resolution, but must be converted because one of its inputs ({templateTarget.TemplateStructureId}) is.";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                 }
                 generatedEclipseStructure.ConvertToHighResolution();
             }
         }
 
-        private async Task ApplyInstruction(And andInstruction)
+        public async Task ApplyInstruction(And andInstruction)
         {
             bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
             {
@@ -371,19 +447,19 @@ namespace OptiMate.Models
                 if (TargetStructure == null)
                 {
                     var warning = $"Target of AND operation [{andInstruction.TemplateStructureId}] for structure {genStructure.StructureId} is null/empty, skipping instruction...";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                     return;
                 }
                 else if (EclipseTarget.IsEmpty)
                 {
                     var warning = $"Target of AND operation [{andInstruction.TemplateStructureId}] for structure {genStructure.StructureId} is empty, clearing generated structure...";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                 }
                 generatedEclipseStructure.SegmentVolume = generatedEclipseStructure.SegmentVolume.And(EclipseTarget.SegmentVolume);
                 S.RemoveStructure(EclipseTarget);
             }));
         }
-        private async Task ApplyInstruction(Sub subInstruction)
+        public async Task ApplyInstruction(Sub subInstruction)
         {
             bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
             {
@@ -393,20 +469,20 @@ namespace OptiMate.Models
                 if (TargetStructure == null)
                 {
                     var warning = $"Target of SUB operation [{subInstruction.TemplateStructureId}] for structure {genStructure.StructureId} is null/empty, skipping instruction...";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                     return;
                 }
                 else if (EclipseTarget.IsEmpty)
                 {
                     var warning = $"Target of SUB operation [{subInstruction.TemplateStructureId}] for structure {genStructure.StructureId} is empty, skipping instruction...";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                     return;
                 }
                 generatedEclipseStructure.SegmentVolume = generatedEclipseStructure.SegmentVolume.Sub(EclipseTarget.SegmentVolume);
                 S.RemoveStructure(EclipseTarget);
             }));
         }
-        private async Task ApplyInstruction(SubFrom subFromInstruction)
+        public async Task ApplyInstruction(SubFrom subFromInstruction)
         {
             bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
             {
@@ -416,20 +492,20 @@ namespace OptiMate.Models
                 if (TargetStructure == null)
                 {
                     var warning = $"Target of AND operation [{subFromInstruction.TemplateStructureId}] for structure {genStructure.StructureId} is null/empty, skipping instruction...";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                     return;
                 }
                 else if (EclipseTarget.IsEmpty)
                 {
                     var warning = $"Target of AND operation [{subFromInstruction.TemplateStructureId}] for structure {genStructure.StructureId} is empty, clearing generated structure...";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                 }
                 generatedEclipseStructure.SegmentVolume = EclipseTarget.SegmentVolume.Sub(generatedEclipseStructure.SegmentVolume);
                 S.RemoveStructure(EclipseTarget);
             }));
         }
 
-        private async Task ApplyInstruction(Or orInstruction)
+        public async Task ApplyInstruction(Or orInstruction)
         {
             bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
             {
@@ -439,24 +515,24 @@ namespace OptiMate.Models
                 if (TargetStructure == null)
                 {
                     var warning = $"Target of OR operation [{orInstruction.TemplateStructureId}] for structure {genStructure.StructureId} is null/empty, skipping instruction...";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                     return;
                 }
                 else if (EclipseTarget.IsEmpty)
                 {
                     var warning = $"Target of OR operation [{orInstruction.TemplateStructureId}] for structure {genStructure.StructureId} is empty, skipping instruction...";
-                    _warnings.Add(warning);
+                    warnings.Add(warning);
                     return;
                 }
                 generatedEclipseStructure.SegmentVolume = generatedEclipseStructure.SegmentVolume.Or(EclipseTarget.SegmentVolume);
                 S.RemoveStructure(EclipseTarget);
             }));
         }
-        internal async Task GenerateStructure()
+        public async Task GenerateStructure()
         {
             try
             {
-                _warnings.Clear();
+                warnings.Clear();
                 bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
                 {
                     generatedEclipseStructure = S.Structures.FirstOrDefault(x => string.Equals(x.Id, genStructure.StructureId, StringComparison.OrdinalIgnoreCase));
@@ -469,7 +545,7 @@ namespace OptiMate.Models
                             generatedEclipseStructure = S.AddStructure(DT.ToString(), genStructure.StructureId);
                         else
                         {
-                            _warnings.Add($"Unable to create structure {genStructure.StructureId}...");
+                            warnings.Add($"Unable to create structure {genStructure.StructureId}...");
                             throw new Exception($"Unable to create structure {genStructure.StructureId}...");
                         }
                     }
@@ -531,11 +607,11 @@ namespace OptiMate.Models
             }
             catch (Exception ex)
             {
-                _warnings.Add($"Error generating structure {genStructure.StructureId}, aborting...");
+                warnings.Add($"Error generating structure {genStructure.StructureId}, aborting...");
             }
         }
 
-        private async Task ConvertToHighResolution()
+        public async Task ConvertToHighResolution()
         {
             bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
             {
@@ -546,9 +622,9 @@ namespace OptiMate.Models
             }));
         }
 
-        internal IEnumerable<string> GetCompletionWarnings()
+        public IEnumerable<string> GetCompletionWarnings()
         {
-            return _warnings;
+            return warnings;
         }
     }
 }

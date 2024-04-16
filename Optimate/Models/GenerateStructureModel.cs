@@ -475,7 +475,8 @@ namespace OptiMate.Models
                 InstructionCompletionStatus completionStatus = InstructionCompletionStatus.Completed;
                 bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
                 {
-                    TemplateStructure TargetStructure = templateStructures.FirstOrDefault(x => string.Equals(x.TemplateStructureId, subInstruction.TemplateStructureId, StringComparison.OrdinalIgnoreCase));
+                    TemplateStructure TargetStructure = templateStructures
+                    .FirstOrDefault(x => string.Equals(x.TemplateStructureId, subInstruction.TemplateStructureId, StringComparison.OrdinalIgnoreCase));
                     Structure EclipseTarget = GetTempTargetStructure(S, TargetStructure);
                     CheckForHRConversion(TargetStructure, EclipseTarget);
                     if (EclipseTarget == null)
@@ -595,8 +596,12 @@ namespace OptiMate.Models
                     bool Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
                     {
                         generatedEclipseStructure = S.Structures.FirstOrDefault(x => string.Equals(x.Id, genStructure.StructureId, StringComparison.OrdinalIgnoreCase));
-                        if (generatedEclipseStructure == null)
+                        if (generatedEclipseStructure != null)
                         {
+                            S.RemoveStructure(S.Structures.FirstOrDefault(x => string.Equals(x.Id, genStructure.StructureId, StringComparison.OrdinalIgnoreCase)));
+                        }
+                        //if (generatedEclipseStructure == null)
+                        //{
                             DICOMTypes DT = 0;
                             Enum.TryParse(genStructure.DicomType.ToUpper(), out DT);
                             bool validNewStructure = S.CanAddStructure(DT.ToString(), genStructure.StructureId);
@@ -607,12 +612,14 @@ namespace OptiMate.Models
                                 _warnings.Add($"Unable to create structure {genStructure.StructureId}...");
                                 throw new Exception($"Unable to create structure {genStructure.StructureId}...");
                             }
-                        }
-                        else
-                        {
-                            SeriLogModel.AddWarning($"Structure {genStructure.StructureId} already exists, overwriting...");
-                            generatedEclipseStructure.SegmentVolume = generatedEclipseStructure.SegmentVolume.And(generatedEclipseStructure.SegmentVolume.Not());
-                        }
+                        //}
+                        //else
+                        //{
+                        //    SeriLogModel.AddWarning($"Structure {genStructure.StructureId} already exists, overwriting...");
+                        //    generatedEclipseStructure.SegmentVolume = generatedEclipseStructure.SegmentVolume.And(generatedEclipseStructure.SegmentVolume.Not());
+                        //    //generatedEclipseStructure.SegmentVolume = generatedEclipseStructure.SegmentVolume.Sub(generatedEclipseStructure.SegmentVolume);
+                        //} 
+                        //edits based on ESAPI issue where running a second time gave slightly different structures -HL
 
                     }));
                     InstructionCompletionStatus status = InstructionCompletionStatus.Pending;
@@ -666,6 +673,7 @@ namespace OptiMate.Models
                     {
                         Done = await Task.Run(() => ew.AsyncRunStructureContext((p, S, ui) =>
                         {
+                            //generatedEclipseStructure.SegmentVolume = generatedEclipseStructure.SegmentVolume.Sub(generatedEclipseStructure.SegmentVolume);
                             generatedEclipseStructure.SegmentVolume = generatedEclipseStructure.SegmentVolume.And(generatedEclipseStructure.SegmentVolume.Not());
                         }));
                     }

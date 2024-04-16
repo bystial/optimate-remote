@@ -70,8 +70,6 @@ namespace OptiMate
             }
         }
 
-        
-
         public void RemoveError(string propertyName)
         {
             // remove error

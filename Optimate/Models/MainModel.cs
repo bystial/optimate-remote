@@ -20,7 +20,6 @@ using System.Collections.ObjectModel;
 namespace OptiMate.Models
 {
 
-    
     public partial class MainModel
     {
 
@@ -70,6 +69,7 @@ namespace OptiMate.Models
 
             var AssemblyPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             XmlSerializer Ser = new XmlSerializer(typeof(OptiMateConfiguration));
+
             var configFile = Path.Combine(AssemblyPath, "OptiMateConfig.xml");
             try
             {

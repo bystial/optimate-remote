@@ -266,6 +266,7 @@ namespace OptiMate.ViewModels
         public bool ReviewWarningsPopupVisibility { get; set; } = false;
 
         public bool ReviewInputValidationPopupVisibility { get; set; } = false;
+        public Task InitializeModel { get; set; }
 
         public ViewModel()
         {
@@ -280,7 +281,7 @@ namespace OptiMate.ViewModels
             _model = model;
             _model.SetEventAggregator(_ea);
             RegisterEvents();
-            _model.Initialize();
+            InitializeModel = _model.Initialize();
         }
 
         private void RegisterEvents()
@@ -495,6 +496,7 @@ namespace OptiMate.ViewModels
                     StatusMessage = "Structures generated successfully";
                 }
                 WaitMessage = "";
+                //throw new Exception("can catch?"); //dirty exception test (success)
             }
             catch (Exception ex)
             {
@@ -517,6 +519,7 @@ namespace OptiMate.ViewModels
             try
             {
                 await Task.Run(() => Process.Start(Environment.GetEnvironmentVariable("WINDIR") + @"\explorer.exe", _model.GetUserTemplatePath()));
+                //throw new Exception("can catch?"); //dirty exception test (success)
             }
             catch (Exception ex)
             {

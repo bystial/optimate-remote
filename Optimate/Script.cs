@@ -10,6 +10,9 @@ using VMS.TPS.Common.Model.API;
 using OptiMate;
 using OptiMate.ViewModels;
 using OptiMate.Models;
+using Ninject;
+using Ninject.Modules;
+using OptiMate.Services;
 
 namespace VMS.TPS
 {
@@ -30,6 +33,7 @@ namespace VMS.TPS
 
         private void InitializeAndStartMainWindow(EsapiWorker esapiWorker)
         {
+            
             var model = new MainModel(esapiWorker);
             var viewModel = new ViewModel(model);
             var mainWindow = new ScriptWindow(viewModel);
@@ -38,6 +42,9 @@ namespace VMS.TPS
 
         public void Execute(ScriptContext context)
         {
+            var worker = new EsapiWorker(context);
+            //var kernal = new StandardKernel(new EWorkerModule());
+            //EsapiWorker EW = kernal.Get<EsapiWorker>();
             // The ESAPI worker needs to be created in the main thread
             EsapiWorker ew;
             if (context.PlanSetup == null)
@@ -46,7 +53,7 @@ namespace VMS.TPS
             }
             else
                 ew = new EsapiWorker(context.Patient, context.PlanSetup, context.StructureSet, context.CurrentUser.Id);
-
+            
             // This new queue of tasks will prevent the script
             // for exiting until the new window is closed
             DispatcherFrame frame = new DispatcherFrame();
@@ -55,7 +62,7 @@ namespace VMS.TPS
             {
                 // This method won't return until the window is closed
 
-                InitializeAndStartMainWindow(ew);
+                InitializeAndStartMainWindow(worker);
 
                 // End the queue so that the script can exit
                 frame.Continue = false;

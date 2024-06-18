@@ -55,7 +55,8 @@ namespace OptiMate.Models
             _ea = ea;
         }
 
-        public async void Initialize()
+
+        public async Task Initialize()
         {
             InitializePaths();
             SeriLogModel.Initialize(LogPath, _ew.UserId);
